@@ -1,0 +1,10 @@
+{
+  "name": "smart-ac-queue",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local AWS SQS emulator (FIFO-free, visibility-timeout queue) - Week 3/4 infrastructure",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  }
+}

@@ -1,0 +1,175 @@
+# ============================================================================
+# Smart AC - Week 7 containerised stack (emulates the AWS architecture locally)
+#
+# Mapping to the plan's cloud architecture:
+#   nodered  -> edge gateway (Node-RED, virtual sensors)          [Week 2]
+#   mongo    -> MongoDB Atlas (persistence)                       [Week 4]
+#   queue    -> AWS SQS emulator (decoupled messaging)            [Week 3/4]
+#   broker   -> AWS IoT Core emulator (Aedes MQTT + rules engine)[Week 3]
+#   ingestion-> Node.js ingestion microservice                    [Week 4]
+#   ai-agent -> Node.js AI agent microservice                    [Week 5]
+#   actuator -> actuation microservice (MQTT downlink)           [Week 6]
+#
+# Each Node.js service is a container, exactly like one ECS Fargate task
+# container. `ingestion`, `ai-agent` and `actuator` are queue consumers and can
+# be horizontally scaled (see deploy/ecs/README.md for the ECS mapping):
+#
+#   docker compose up -d --scale ingestion=2 --scale ai-agent=2
+#
+# Real AWS would auto-scale on SQS queue depth (NFR1); the queue /stats
+# endpoint exposes the same depth metric here.
+# ============================================================================
+
+name: smart-ac
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: smart-ac-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27018:27017" # host port offset to avoid clashing with local mongod
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+
+  queue:
+    build:
+      context: .
+      dockerfile: services/queue/Dockerfile
+    container_name: smart-ac-queue
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  broker:
+    build:
+      context: .
+      dockerfile: services/broker/Dockerfile
+    container_name: smart-ac-broker
+    restart: unless-stopped
+    environment:
+      QUEUE_URL: http://queue:3100
+      MQTT_PORT: "1883"
+      METRICS_PORT: "31883"
+    ports:
+      - "1883:1883" # MQTT device gateway (Node-RED + actuator connect here)
+      - "127.0.0.1:31883:31883"
+    depends_on:
+      queue:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:31883/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: services/ingestion/Dockerfile
+    restart: unless-stopped
+    environment:
+      QUEUE_URL: http://queue:3100
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: smart_ac
+      PORT: "3120"
+    ports:
+      - "127.0.0.1:3120:3120"
+    depends_on:
+      queue:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3120/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+
+  ai-agent:
+    build:
+      context: .
+      dockerfile: services/ai-agent/Dockerfile
+    restart: unless-stopped
+    environment:
+      QUEUE_URL: http://queue:3100
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: smart_ac
+      PORT: "3130"
+    ports:
+      - "127.0.0.1:3130:3130"
+    depends_on:
+      queue:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3130/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+
+  actuator:
+    build:
+      context: .
+      dockerfile: services/actuator/Dockerfile
+    restart: unless-stopped
+    environment:
+      QUEUE_URL: http://queue:3100
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: smart_ac
+      MQTT_URL: mqtt://broker:1883
+      PORT: "3140"
+    ports:
+      - "127.0.0.1:3140:3140"
+    depends_on:
+      queue:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3140/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+
+  nodered:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    container_name: smart-ac-nodered
+    restart: unless-stopped
+    environment:
+      BROKER_HOST: broker # baked into flows.json at build time - kept for reference
+    ports:
+      - "1880:1880" # Node-RED editor / debug UI (http://localhost:1880)
+    depends_on:
+      broker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:1880/').then(()=>process.exit(0)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  mongo-data:

@@ -1,0 +1,155 @@
+=== Key events digest - Smart AC evidence run ===
+generated: 2026-09-06T08:50:52.920Z
+log window: 2026-09-06T08:48:08  ->  2026-09-06T08:45:41
+log lines: 3111
+
+--- 1. Service boot markers ---
+smart-ac-queue  | 2026-09-06T08:36:55.822962864Z 2026-09-06T08:36:55.821Z INFO  [queue] queue service listening on :3100 (AWS SQS emulator)
+actuator-1      | 2026-09-06T08:37:07.769715393Z 2026-09-06T08:37:07.769Z INFO  [actuator] actuator service listening on :3140
+ingestion-1     | 2026-09-06T08:37:01.992522646Z 2026-09-06T08:37:01.992Z INFO  [ingestion] ingestion service listening on :3120
+smart-ac-broker  | 2026-09-06T08:37:01.810527459Z 2026-09-06T08:37:01.809Z INFO  [broker] MQTT broker listening on :1883 (AWS IoT Core emulator)
+ai-agent-1       | 2026-09-06T08:37:01.803689038Z 2026-09-06T08:37:01.803Z INFO  [ai-agent] ai-agent ready (engine: ai-agent-nn-v1, model trained 2026-09-06T08:35:26.153Z, layers [7,24,16,2])
+ai-agent-1       | 2026-09-06T08:37:01.806137178Z 2026-09-06T08:37:01.805Z INFO  [ai-agent] ai-agent service listening on :3130
+smart-ac-nodered  | 2026-09-06T08:37:08.785856149Z 6 Sep 08:37:08 - [info] Flows file     : /data/flows.json
+smart-ac-nodered  | 2026-09-06T08:37:08.809025427Z 6 Sep 08:37:08 - [info] Starting flows
+smart-ac-nodered  | 2026-09-06T08:37:08.873506393Z 6 Sep 08:37:08 - [info] Started flows
+smart-ac-nodered  | 2026-09-06T08:37:59.756290879Z 6 Sep 08:37:59 - [info] Stopping flows
+smart-ac-nodered  | 2026-09-06T08:37:59.772662867Z 6 Sep 08:37:59 - [info] Stopped flows
+smart-ac-nodered  | 2026-09-06T08:38:01.343468499Z 6 Sep 08:38:01 - [info] Flows file     : /data/flows.json
+smart-ac-nodered  | 2026-09-06T08:38:01.357693462Z 6 Sep 08:38:01 - [info] Starting flows
+smart-ac-nodered  | 2026-09-06T08:38:01.400359266Z 6 Sep 08:38:01 - [info] Started flows
+
+--- 2. Live counters at capture time ---
+ai-agent model : engine=ai-agent-nn-v1 trainedAt=2026-09-06T08:35:26.153Z samples={"train":7920,"val":1980,"total":9900} valMetrics={"maeTempC":0.17,"maeFanPct":3.8,"exactActionMatchPct":82.6,"totalCostGapVsExpertPct":3}
+ai-agent        : decisionsStored=15 noChange=26 inferences=15 jobsReceived=41 monitorRuns=42 anomalyTotal=20 anomaliesOpen=2 lastInferenceMs=0 queueErrors=0
+ingestion       : received=489 invalid=0 stored=489 minutesFlushed=39 emergencyJobs=2 minuteJobs=39
+actuator        : jobsApplied=15 mqttPublishFailures=0 lastLoopLatencyMs=280
+actuator state  : west-office=26C/18%  east-office=23C/24%  meeting-room=26C/18%
+broker          : mqttPublishes=530 rulesForwarded=492 rulesFailed=0 dlqPending=0
+queue depths    : telemetry={"queue":"telemetry","available":3,"inflight":0,"totalEnqueued":492,"totalDeleted":489} ai-jobs={"queue":"ai-jobs","available":0,"inflight":0,"totalEnqueued":41,"totalDeleted":41} actuator-jobs={"queue":"actuator-jobs","available":0,"inflight":0,"totalEnqueued":15,"totalDeleted":15}
+
+--- 3. Closed-loop event trace (edge -> cloud -> actuator) ---
+ai-agent-1       | 2026-09-06T08:37:01.822545899Z 2026-09-06T08:37:01.822Z WARN  [ai-agent] [ai-monitor] east-office: WARN ACTUATOR_STALE - no cloud AC command applied for 284 min while the zone is reporting
+ai-agent-1       | 2026-09-06T08:37:01.832664808Z 2026-09-06T08:37:01.832Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:37:01.832713855Z 2026-09-06T08:37:01.832Z WARN  [ai-agent] [ai-monitor] west-office: WARN ACTUATOR_STALE - no cloud AC command applied for 225 min while the zone is reporting
+ai-agent-1       | 2026-09-06T08:37:01.842306241Z 2026-09-06T08:37:01.841Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN ACTUATOR_STALE - no cloud AC command applied for 279 min while the zone is reporting
+ai-agent-1       | 2026-09-06T08:37:21.767813825Z 2026-09-06T08:37:21.767Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:01.765971012Z 2026-09-06T08:38:01.765Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN CO2_RISING - CO2 983 ppm and rising 220 ppm/min - ventilation demand
+ai-agent-1       | 2026-09-06T08:38:01.796466463Z 2026-09-06T08:38:01.796Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788683881784-45B5D0","zone":"west-office","target_temp":26,"fan":18,"emergency":false,"latencyFromSensorMs":2867,"type":"minute","model":"ai-agent-
+ai-agent-1       | 2026-09-06T08:38:01.803414509Z 2026-09-06T08:38:01.803Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788683881799-99CA0E","zone":"east-office","target_temp":26,"fan":19,"emergency":false,"latencyFromSensorMs":2898,"type":"minute","model":"ai-agent-
+ai-agent-1       | 2026-09-06T08:38:01.807869296Z 2026-09-06T08:38:01.807Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788683881804-88927A","zone":"meeting-room","target_temp":22,"fan":79,"emergency":false,"latencyFromSensorMs":2875,"type":"minute","model":"ai-agent
+ai-agent-1       | 2026-09-06T08:38:21.758069170Z 2026-09-06T08:38:21.757Z INFO  [ai-agent] [ai-monitor] east-office: ACTUATOR_STALE resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.759879723Z 2026-09-06T08:38:21.759Z INFO  [ai-agent] [ai-monitor] west-office: ACTUATOR_STALE resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.761045220Z 2026-09-06T08:38:21.760Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_RISING resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.761061643Z 2026-09-06T08:38:21.760Z INFO  [ai-agent] [ai-monitor] meeting-room: ACTUATOR_STALE resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:39:00.996150978Z 2026-09-06T08:39:00.996Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:39:01.798062344Z 2026-09-06T08:39:01.797Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:39:01.800310254Z 2026-09-06T08:39:01.800Z INFO  [ai-agent] no setpoint change required {"zone":"meeting-room","type":"minute"}
+ai-agent-1       | 2026-09-06T08:39:07.403783913Z 2026-09-06T08:39:07.403Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788683947399-201C01","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":916,"type":"emergency","model":"ai-age
+ai-agent-1       | 2026-09-06T08:40:01.042632113Z 2026-09-06T08:40:01.042Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:40:01.043925948Z 2026-09-06T08:40:01.043Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:40:01.049005858Z 2026-09-06T08:40:01.048Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684001045-4A2FE7","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":4480,"type":"emergency-minute","model"
+ai-agent-1       | 2026-09-06T08:40:01.755800152Z 2026-09-06T08:40:01.755Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN CO2_RISING - CO2 1228 ppm and rising 494 ppm/min - ventilation demand
+ai-agent-1       | 2026-09-06T08:41:00.269184689Z 2026-09-06T08:41:00.268Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684060259-5EB73B","zone":"east-office","target_temp":21,"fan":44,"emergency":false,"latencyFromSensorMs":3577,"type":"minute","model":"ai-agent-
+ai-agent-1       | 2026-09-06T08:41:00.271365373Z 2026-09-06T08:41:00.271Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:41:00.276980857Z 2026-09-06T08:41:00.276Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684060272-66B145","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":3593,"type":"emergency-minute","model"
+ai-agent-1       | 2026-09-06T08:41:01.755696688Z 2026-09-06T08:41:01.755Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_RISING resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:42:00.283848347Z 2026-09-06T08:42:00.283Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684120279-62AF9C","zone":"east-office","target_temp":23,"fan":24,"emergency":false,"latencyFromSensorMs":3497,"type":"minute","model":"ai-agent-
+ai-agent-1       | 2026-09-06T08:42:00.285224734Z 2026-09-06T08:42:00.285Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:42:00.289979203Z 2026-09-06T08:42:00.289Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684120286-CA555B","zone":"meeting-room","target_temp":26,"fan":19,"emergency":false,"latencyFromSensorMs":3508,"type":"minute","model":"ai-agent
+ai-agent-1       | 2026-09-06T08:42:01.755059748Z 2026-09-06T08:42:01.754Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.010 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:42:41.750129584Z 2026-09-06T08:42:41.749Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:43:00.292047006Z 2026-09-06T08:43:00.291Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:43:00.294016829Z 2026-09-06T08:43:00.293Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:43:00.296275084Z 2026-09-06T08:43:00.296Z INFO  [ai-agent] no setpoint change required {"zone":"meeting-room","type":"minute"}
+ai-agent-1       | 2026-09-06T08:43:57.109051499Z 2026-09-06T08:43:57.108Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684237104-FCCC74","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":135,"type":"emergency","model":"ai-age
+ai-agent-1       | 2026-09-06T08:44:00.306832812Z 2026-09-06T08:44:00.306Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:44:00.308420411Z 2026-09-06T08:44:00.308Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:44:00.312790482Z 2026-09-06T08:44:00.312Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684240310-17F747","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":3341,"type":"emergency-minute","model"
+ai-agent-1       | 2026-09-06T08:44:01.751623096Z 2026-09-06T08:44:01.751Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN CO2_RISING - CO2 1031 ppm and rising 149 ppm/min - ventilation demand
+ai-agent-1       | 2026-09-06T08:44:21.747186259Z 2026-09-06T08:44:21.746Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.030 C, CO2 spread 2.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:44:41.745199933Z 2026-09-06T08:44:41.744Z WARN  [ai-agent] [ai-monitor] east-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.010 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:44:41.746823611Z 2026-09-06T08:44:41.746Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:45:00.316550184Z 2026-09-06T08:45:00.316Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:45:00.318003528Z 2026-09-06T08:45:00.317Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:45:00.322909011Z 2026-09-06T08:45:00.322Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684300318-ECFBC6","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":3281,"type":"emergency-minute","model"
+ai-agent-1       | 2026-09-06T08:45:01.744494007Z 2026-09-06T08:45:01.744Z INFO  [ai-agent] [ai-monitor] east-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:45:41.743794403Z 2026-09-06T08:45:41.743Z WARN  [ai-agent] [ai-monitor] east-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 3.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:45:41.745628662Z 2026-09-06T08:45:41.745Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 2.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:45:41.747985496Z 2026-09-06T08:45:41.747Z WARN  [ai-agent] [ai-monitor] meeting-room: ALERT CO2_HIGH - CO2 1308 ppm reached the cloud without an emergency decision
+ai-agent-1       | 2026-09-06T08:46:00.337895111Z 2026-09-06T08:46:00.337Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:46:00.339791722Z 2026-09-06T08:46:00.339Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:46:00.345290734Z 2026-09-06T08:46:00.344Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684360341-C0A214","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":3225,"type":"emergency-minute","model"
+ai-agent-1       | 2026-09-06T08:46:01.743766631Z 2026-09-06T08:46:01.743Z INFO  [ai-agent] [ai-monitor] east-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:01.745342225Z 2026-09-06T08:46:01.745Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:01.746232634Z 2026-09-06T08:46:01.746Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_HIGH resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:21.742144753Z 2026-09-06T08:46:21.741Z WARN  [ai-agent] [ai-monitor] east-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.030 C, CO2 spread 2.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:46:21.743097886Z 2026-09-06T08:46:21.742Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:46:41.747854116Z 2026-09-06T08:46:41.747Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_RISING resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:47:00.352477871Z 2026-09-06T08:47:00.352Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:47:00.358380705Z 2026-09-06T08:47:00.358Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:47:00.366826854Z 2026-09-06T08:47:00.366Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684420361-7FFC80","zone":"meeting-room","target_temp":22,"fan":100,"emergency":true,"latencyFromSensorMs":3157,"type":"emergency-minute","model"
+ai-agent-1       | 2026-09-06T08:47:41.742398265Z 2026-09-06T08:47:41.742Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:48:00.364076965Z 2026-09-06T08:48:00.363Z INFO  [ai-agent] no setpoint change required {"zone":"east-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:48:00.368294266Z 2026-09-06T08:48:00.367Z INFO  [ai-agent] no setpoint change required {"zone":"west-office","type":"minute"}
+ai-agent-1       | 2026-09-06T08:48:00.373449259Z 2026-09-06T08:48:00.373Z INFO  [ai-agent] decision stored + actuator job enqueued {"decision_id":"DEC-1788684480369-F94546","zone":"meeting-room","target_temp":26,"fan":18,"emergency":false,"latencyFromSensorMs":3094,"type":"minute","model":"ai-agent
+smart-ac-nodered  | 2026-09-06T08:37:57.679793750Z 6 Sep 08:37:57 - [warn] [function:meeting-room (DHT22/MH-Z19/PIR virtual)] [edge-emergency] zone=meeting-room raw CO2=1001 ppm >= 1000 -> LOCAL fan forced to 100% (action latency ~215 ms < 500 ms NFR2)
+smart-ac-nodered  | 2026-09-06T08:38:02.110675130Z 6 Sep 08:38:02 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=west-office applied temp=26C fan=18% decision=DEC-1788683881784-45B5D0
+smart-ac-nodered  | 2026-09-06T08:38:02.111584067Z 6 Sep 08:38:02 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=east-office applied temp=26C fan=19% decision=DEC-1788683881799-99CA0E
+smart-ac-nodered  | 2026-09-06T08:38:02.114011817Z 6 Sep 08:38:02 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=79% decision=DEC-1788683881804-88927A
+smart-ac-nodered  | 2026-09-06T08:39:01.722190410Z 6 Sep 08:39:01 - [warn] [function:meeting-room (DHT22/MH-Z19/PIR virtual)] [edge-emergency] zone=meeting-room raw CO2=1002 ppm >= 1000 -> LOCAL fan forced to 100% (action latency ~141 ms < 500 ms NFR2)
+smart-ac-nodered  | 2026-09-06T08:39:07.725125510Z 6 Sep 08:39:07 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788683947399-201C01 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:40:01.338888883Z 6 Sep 08:40:01 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684001045-4A2FE7 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:41:00.549358215Z 6 Sep 08:41:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=east-office applied temp=21C fan=44% decision=DEC-1788684060259-5EB73B
+smart-ac-nodered  | 2026-09-06T08:41:00.551125025Z 6 Sep 08:41:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684060272-66B145 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:41:06.702228756Z 6 Sep 08:41:06 - [warn] [function:meeting-room (DHT22/MH-Z19/PIR virtual)] [edge-emergency-clear] zone=meeting-room CO2=849 ppm < 850 -> local fan released
+smart-ac-nodered  | 2026-09-06T08:42:00.573793599Z 6 Sep 08:42:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=east-office applied temp=23C fan=24% decision=DEC-1788684120279-62AF9C
+smart-ac-nodered  | 2026-09-06T08:42:00.576402858Z 6 Sep 08:42:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=26C fan=19% decision=DEC-1788684120286-CA555B
+smart-ac-nodered  | 2026-09-06T08:43:50.207289457Z 6 Sep 08:43:50 - [warn] [function:meeting-room (DHT22/MH-Z19/PIR virtual)] [edge-emergency] zone=meeting-room raw CO2=1001 ppm >= 1000 -> LOCAL fan forced to 100% (action latency ~214 ms < 500 ms NFR2)
+smart-ac-nodered  | 2026-09-06T08:43:57.403252115Z 6 Sep 08:43:57 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684237104-FCCC74 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:44:00.605666973Z 6 Sep 08:44:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684240310-17F747 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:45:00.610078404Z 6 Sep 08:45:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684300318-ECFBC6 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:46:00.624396324Z 6 Sep 08:46:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684360341-C0A214 [emergency active]
+smart-ac-nodered  | 2026-09-06T08:46:28.904628930Z 6 Sep 08:46:28 - [warn] [function:meeting-room (DHT22/MH-Z19/PIR virtual)] [edge-emergency-clear] zone=meeting-room CO2=848 ppm < 850 -> local fan released
+smart-ac-nodered  | 2026-09-06T08:47:00.635355429Z 6 Sep 08:47:00 - [warn] [function:apply setpoint to virtual actuator] [edge-actuator] zone=meeting-room applied temp=22C fan=100% decision=DEC-1788684420361-7FFC80
+
+--- 4. NFR2 cloud-loop latency (sensor trigger -> decision) ---
+decisions with latency=15 min=135 ms max=4480 ms mean=2963 ms (NFR2 target < 2000 ms per decision)
+edge local emergency fan: latencies 215 ms, 141 ms, 214 ms (NFR2 target < 500 ms)
+
+--- 5. AI agent monitoring skill ([ai-monitor] events) ---
+ai-agent-1       | 2026-09-06T08:37:01.822545899Z 2026-09-06T08:37:01.822Z WARN  [ai-agent] [ai-monitor] east-office: WARN ACTUATOR_STALE - no cloud AC command applied for 284 min while the zone is reporting
+ai-agent-1       | 2026-09-06T08:37:01.832664808Z 2026-09-06T08:37:01.832Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:37:01.832713855Z 2026-09-06T08:37:01.832Z WARN  [ai-agent] [ai-monitor] west-office: WARN ACTUATOR_STALE - no cloud AC command applied for 225 min while the zone is reporting
+ai-agent-1       | 2026-09-06T08:37:01.842306241Z 2026-09-06T08:37:01.841Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN ACTUATOR_STALE - no cloud AC command applied for 279 min while the zone is reporting
+ai-agent-1       | 2026-09-06T08:38:01.765971012Z 2026-09-06T08:38:01.765Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN CO2_RISING - CO2 983 ppm and rising 220 ppm/min - ventilation demand
+ai-agent-1       | 2026-09-06T08:40:01.755800152Z 2026-09-06T08:40:01.755Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN CO2_RISING - CO2 1228 ppm and rising 494 ppm/min - ventilation demand
+ai-agent-1       | 2026-09-06T08:42:01.755059748Z 2026-09-06T08:42:01.754Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.010 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:44:01.751623096Z 2026-09-06T08:44:01.751Z WARN  [ai-agent] [ai-monitor] meeting-room: WARN CO2_RISING - CO2 1031 ppm and rising 149 ppm/min - ventilation demand
+ai-agent-1       | 2026-09-06T08:44:21.747186259Z 2026-09-06T08:44:21.746Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.030 C, CO2 spread 2.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:44:41.745199933Z 2026-09-06T08:44:41.744Z WARN  [ai-agent] [ai-monitor] east-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.010 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:45:41.743794403Z 2026-09-06T08:45:41.743Z WARN  [ai-agent] [ai-monitor] east-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 3.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:45:41.745628662Z 2026-09-06T08:45:41.745Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 2.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:46:21.742144753Z 2026-09-06T08:46:21.741Z WARN  [ai-agent] [ai-monitor] east-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.030 C, CO2 spread 2.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:46:21.743097886Z 2026-09-06T08:46:21.742Z WARN  [ai-agent] [ai-monitor] west-office: WARN FLAT_SENSOR - sensor looks stuck: temp spread 0.020 C, CO2 spread 1.0 ppm over 6 readings
+ai-agent-1       | 2026-09-06T08:37:21.767813825Z 2026-09-06T08:37:21.767Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.758069170Z 2026-09-06T08:38:21.757Z INFO  [ai-agent] [ai-monitor] east-office: ACTUATOR_STALE resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.759879723Z 2026-09-06T08:38:21.759Z INFO  [ai-agent] [ai-monitor] west-office: ACTUATOR_STALE resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.761045220Z 2026-09-06T08:38:21.760Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_RISING resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:38:21.761061643Z 2026-09-06T08:38:21.760Z INFO  [ai-agent] [ai-monitor] meeting-room: ACTUATOR_STALE resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:41:01.755696688Z 2026-09-06T08:41:01.755Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_RISING resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:42:41.750129584Z 2026-09-06T08:42:41.749Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:44:41.746823611Z 2026-09-06T08:44:41.746Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:45:01.744494007Z 2026-09-06T08:45:01.744Z INFO  [ai-agent] [ai-monitor] east-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:01.743766631Z 2026-09-06T08:46:01.743Z INFO  [ai-agent] [ai-monitor] east-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:01.745342225Z 2026-09-06T08:46:01.745Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:01.746232634Z 2026-09-06T08:46:01.746Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_HIGH resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:46:41.747854116Z 2026-09-06T08:46:41.747Z INFO  [ai-agent] [ai-monitor] meeting-room: CO2_RISING resolved (active for 20 s)
+ai-agent-1       | 2026-09-06T08:47:41.742398265Z 2026-09-06T08:47:41.742Z INFO  [ai-agent] [ai-monitor] west-office: FLAT_SENSOR resolved (active for 20 s)
+
+--- 6. Rollup ---
+edge emergencies fired: 3, cleared: 2
+cloud decisions stored: 15
+"no change" dedupe skips: 20
+[ai-monitor] events: open=14 resolved=14
+total lines in window: 3111

@@ -1,0 +1,47 @@
+=== verify_stack ===
+captured: 2026-09-06T08:48:08.305Z
+
+verify_stack: checking services on localhost ports {"queue":3100,"broker":31883,"ingestion":3120,"ai-agent":3130,"actuator":3140}
+========================================================================
+WEEK 7 STACK VERIFICATION REPORT - Smart AC IoT System
+generated 2026-09-06T08:48:08.292Z
+========================================================================
+  [PASS] health:queue - uptimeSec=672
+  [PASS] health:broker - uptimeSec=667
+  [PASS] health:ingestion - uptimeSec=667
+  [PASS] health:ai-agent - uptimeSec=667
+  [PASS] health:actuator - uptimeSec=661
+  [PASS] queue:roundtrip - send=1 receive=1 delete=1
+========================================================================
+RESULT: ALL CHECKS PASSED
+========================================================================
+
+collecting live business metrics...
+
+========================================================================
+WEEK 7 STACK VERIFICATION REPORT - Smart AC IoT System
+generated 2026-09-06T08:48:08.293Z
+========================================================================
+  [PASS] health:queue - uptimeSec=672
+  [PASS] health:broker - uptimeSec=667
+  [PASS] health:ingestion - uptimeSec=667
+  [PASS] health:ai-agent - uptimeSec=667
+  [PASS] health:actuator - uptimeSec=661
+  [PASS] queue:roundtrip - send=1 receive=1 delete=1
+  [PASS] evidence:telemetry-flow - telemetry docs stored=11316 (ingestion counters.stored=393)
+  [PASS] evidence:minute-aggregation - minute aggregates flushed=33
+  [PASS] evidence:ai-decisions - decisions stored=15 noChange=20
+  [PASS] evidence:actuation - setpoints applied=15 mqttReady=true lastLoopLatencyMs=280
+  [PASS] evidence:broker-rules - mqtt publishes=429 rulesForwarded=393 dlqPending=0
+  [PASS] evidence:queue-drained - telemetry queue depth=0 (backlog should be near zero when consumers keep up)
+  [PASS] decision:east-office - 23C fan=24% normal | occupied room 23.9C, comfort target 23C. CO2 rising 87 ppm/min, ventilating proactively. model ai-agent-nn-v1. | lastCloudLatencyMs=3094
+  [PASS] decision:west-office - 26C fan=18% normal | unoccupied room, energy-saving target 26C. model ai-agent-nn-v1. | lastCloudLatencyMs=3094
+  [PASS] decision:meeting-room - 26C fan=18% normal | unoccupied room, energy-saving target 26C. model ai-agent-nn-v1. | lastCloudLatencyMs=3094
+  [PASS] actuator:west-office - target=26C fan=18% decision=DEC-1788683881784-45B5D0
+  [PASS] actuator:east-office - target=23C fan=24% decision=DEC-1788684120279-62AF9C
+  [PASS] actuator:meeting-room - target=26C fan=18% decision=DEC-1788684480369-F94546
+========================================================================
+RESULT: ALL CHECKS PASSED
+========================================================================
+
+(exit 0)

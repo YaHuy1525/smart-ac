@@ -1,0 +1,14 @@
+# Keep image build contexts small and reproducible.
+node_modules
+**/node_modules
+evidence
+tests
+scripts
+deploy
+*.md
+.git
+.gitignore
+.env
+data
+.data
+edge/data

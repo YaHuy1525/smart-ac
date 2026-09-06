@@ -1,0 +1,13 @@
+=== Unit tests: AI agent (NN engine) + monitoring skill + telemetry ===
+run: 2026-09-06T08:36:24.823Z
+command: npm test (jest --runInBand)
+
+PASS tests/agent.test.js
+PASS tests/monitor.test.js
+PASS tests/telemetry.test.js
+
+Test Suites: 3 passed, 3 total
+Tests:       26 passed, 26 total
+Snapshots:   0 total
+Time:        0.503 s, estimated 1 s
+Ran all test suites.

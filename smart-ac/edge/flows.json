@@ -1,0 +1,398 @@
+[
+  {
+    "id": "tab-edge",
+    "type": "tab",
+    "label": "Smart AC Edge Gateway (virtual sensors)",
+    "disabled": false,
+    "info": "Week 2 deliverable: Node-RED edge gateway with virtual DHT22/MH-Z19/PIR sensors, 5 s smoothing, CO2>1000 local emergency fan, and cloud setpoint actuator handling."
+  },
+  {
+    "id": "inj-east-office",
+    "type": "inject",
+    "z": "edge-main",
+    "name": "virtual sensor clock east-office",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "0.25",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 80,
+    "y": 120,
+    "wires": [
+      [
+        "fn-gen-east-office"
+      ]
+    ]
+  },
+  {
+    "id": "fn-gen-east-office",
+    "type": "function",
+    "z": "edge-main",
+    "name": "east-office (DHT22/MH-Z19/PIR virtual)",
+    "func": "// Virtual sensor suite for east-office: DHT22 (temp/hum), MH-Z19 (CO2), PIR (occupancy)\nvar TICK_S = 0.25;                    // virtual sensor sampling cadence\nvar PUBLISH_TICKS = 20;               // 20 ticks = 5 s sliding window (FR1 smoothing)\nvar EQ_PER_PPL = 110;     // ppm per occupant at equilibrium (room ventilation)\nvar EQ_RATE = 0.02;                   // ppm exchange rate (1/s)\nvar EMG_ON = 1000, EMG_OFF = 850;     // ppm hysteresis (FR1)\nvar s = context.get('s');\nif (!s) { s = JSON.parse('{\"temp\":24.6,\"hum\":48,\"co2\":470,\"ppl\":0}'); s.tick = 0; s.emg = false; }\nvar prevCo2 = context.get('prevCo2');\ncontext.set('prevCo2', s.co2);\n\ns.tick += 1;\nvar sec = Math.round(s.tick * TICK_S * 10) / 10;\nvar now = Date.now();\n\n// --- virtual occupancy (PIR) -----------------------------------------\nvar ppl = 0;\nvar windows = [[150,2]];\nfor (var i = 0; i < windows.length; i++) {\n  var w = windows[i];\n  if (sec >= w[0] && sec < (windows[i + 1] ? windows[i + 1][0] : 86400)) { ppl = w[1]; break; }\n}\nvar occ = ppl > 0;\n\n// --- virtual temperature/CO2 (DHT22/MH-Z19): room responds to the AC ------\nvar sp = flow.get('setpoint:east-office');\nvar setpoint = (sp && typeof sp.target_temp === 'number') ? sp.target_temp : 24;\n// Cloud fan speed drives ventilation: fan 100 % lowers the CO2 equilibrium by 25 %.\nvar fanPct = (sp && typeof sp.fan_speed === 'number') ? Math.min(100, Math.max(0, sp.fan_speed)) : 20;\nif (s.emg) { fanPct = 100; } // local emergency fan overrides for ventilation\nvar vent = 1 - 0.25 * (fanPct / 100);\n\n// --- virtual CO2 (MH-Z19): approaches an occupancy+ventilation equilibrium\nvar eqCo2 = occ ? Math.min(2200, (420 + ppl * EQ_PER_PPL) * vent) : 420;\nvar co2 = s.co2 + (eqCo2 - s.co2) * EQ_RATE * TICK_S + (Math.random() - 0.5) * 3 * TICK_S;\nco2 = Math.min(2200, Math.max(420, co2));\n\n// --- virtual temperature (DHT22): drifts toward the cloud setpoint ----\nvar heat = occ ? ppl * 0.006 : 0;\nvar temp = s.temp - (s.temp - setpoint) * 0.02 * TICK_S + heat * TICK_S + (Math.random() - 0.5) * 0.04 * TICK_S;\ntemp = Math.min(38, Math.max(16, temp));\n\n// --- virtual humidity (DHT22) -----------------------------------------\nvar hum = s.hum + (occ ? 0.05 : -0.03) * TICK_S + (Math.random() - 0.5) * 0.05 * TICK_S;\nhum = Math.min(75, Math.max(25, hum));\n\ns.temp = temp; s.hum = hum; s.co2 = co2; s.ppl = ppl;\ncontext.set('s', s);\n\n// --- 5-second sliding average (FR1: remove electrical noise) ----------\nvar buf = context.get('buf') || [];\nbuf.push({ t: now, temp: temp, hum: hum, co2: co2, occ: occ });\nwhile (buf.length > 1 && now - buf[0].t > 5000) { buf.shift(); }\nif (buf.length > 200) { buf.shift(); }\ncontext.set('buf', buf);\n\n// --- emergency fan path (FR1: raw CO2 >= 1000 -> local fan 100) -------\nvar emgMsg = null;\nvar clrMsg = null;\nvar latencyMs = null;\nif (!s.emg && co2 >= EMG_ON) {\n  s.emg = true;\n  // estimate when CO2 actually crossed 1000 ppm between two 250 ms samples\n  if (prevCo2 !== undefined && prevCo2 < EMG_ON) {\n    var frac = (EMG_ON - prevCo2) / (co2 - prevCo2);\n    latencyMs = Math.round(Math.min(1, Math.max(0, frac)) * TICK_S * 1000);\n  }\n  latencyMs = latencyMs === null ? Math.round(TICK_S * 1000) : latencyMs;\n  node.warn('[edge-emergency] zone=east-office raw CO2=' + Math.round(co2) + ' ppm >= ' + EMG_ON +\n    ' -> LOCAL fan forced to 100% (action latency ~' + latencyMs + ' ms < 500 ms NFR2)');\n  flow.set('emg:east-office', true);\n  emgMsg = { payload: { zone: 'east-office', co2_ppm: Math.round(co2), action: 'emergency_fan_100', latency_ms: latencyMs, time: new Date().toISOString() } };\n} else if (s.emg && co2 < EMG_OFF) {\n  s.emg = false;\n  node.warn('[edge-emergency-clear] zone=east-office CO2=' + Math.round(co2) + ' ppm < ' + EMG_OFF + ' -> local fan released');\n  flow.set('emg:east-office', false);\n  clrMsg = { payload: { zone: 'east-office', co2_ppm: Math.round(co2), action: 'emergency_clear', time: new Date().toISOString() } };\n}\ncontext.set('s', s);\n\n// --- publish smoothed reading every 5 seconds -------------------------\nvar pubMsg = null;\nif (s.tick % PUBLISH_TICKS === 0 && buf.length > 0) {\n  var n = buf.length;\n  var avg = buf.reduce(function (a, m) {\n    a.temp += m.temp / n; a.hum += m.hum / n; a.co2 += m.co2 / n;\n    a.occ = a.occ || m.occ;\n    return a;\n  }, { temp: 0, hum: 0, co2: 0, occ: false });\n  pubMsg = {\n    payload: {\n      zone: 'east-office', time: new Date(now).toISOString(),\n      temp_celsius: Math.round(avg.temp * 100) / 100,\n      humidity: Math.round(avg.hum * 100) / 100,\n      co2_ppm: Math.round(avg.co2),\n      occupancy: avg.occ, edge: 'nodered'\n    }\n  };\n  flow.set('last:east-office', { sec: sec, temp_celsius: pubMsg.payload.temp_celsius, co2_ppm: pubMsg.payload.co2_ppm, occupancy: avg.occ });\n}\nreturn [pubMsg, emgMsg, clrMsg];",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 280,
+    "y": 120,
+    "wires": [
+      [
+        "out-tel-east-office"
+      ],
+      [
+        "out-emg-east-office"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "out-tel-east-office",
+    "type": "mqtt out",
+    "z": "edge-main",
+    "name": "telemetry east-office",
+    "topic": "zones/east-office/telemetry",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-edge",
+    "x": 500,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "out-emg-east-office",
+    "type": "mqtt out",
+    "z": "edge-main",
+    "name": "edge emergency east-office",
+    "topic": "edge/emergency/east-office",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-edge",
+    "x": 500,
+    "y": 240,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "inj-west-office",
+    "type": "inject",
+    "z": "edge-main",
+    "name": "virtual sensor clock west-office",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "0.25",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 80,
+    "y": 270,
+    "wires": [
+      [
+        "fn-gen-west-office"
+      ]
+    ]
+  },
+  {
+    "id": "fn-gen-west-office",
+    "type": "function",
+    "z": "edge-main",
+    "name": "west-office (DHT22/MH-Z19/PIR virtual)",
+    "func": "// Virtual sensor suite for west-office: DHT22 (temp/hum), MH-Z19 (CO2), PIR (occupancy)\nvar TICK_S = 0.25;                    // virtual sensor sampling cadence\nvar PUBLISH_TICKS = 20;               // 20 ticks = 5 s sliding window (FR1 smoothing)\nvar EQ_PER_PPL = 66;     // ppm per occupant at equilibrium (room ventilation)\nvar EQ_RATE = 0.02;                   // ppm exchange rate (1/s)\nvar EMG_ON = 1000, EMG_OFF = 850;     // ppm hysteresis (FR1)\nvar s = context.get('s');\nif (!s) { s = JSON.parse('{\"temp\":24.2,\"hum\":52,\"co2\":540,\"ppl\":0}'); s.tick = 0; s.emg = false; }\nvar prevCo2 = context.get('prevCo2');\ncontext.set('prevCo2', s.co2);\n\ns.tick += 1;\nvar sec = Math.round(s.tick * TICK_S * 10) / 10;\nvar now = Date.now();\n\n// --- virtual occupancy (PIR) -----------------------------------------\nvar ppl = 0;\nvar windows = [[3600,6]];\nfor (var i = 0; i < windows.length; i++) {\n  var w = windows[i];\n  if (sec >= w[0] && sec < (windows[i + 1] ? windows[i + 1][0] : 86400)) { ppl = w[1]; break; }\n}\nvar occ = ppl > 0;\n\n// --- virtual temperature/CO2 (DHT22/MH-Z19): room responds to the AC ------\nvar sp = flow.get('setpoint:west-office');\nvar setpoint = (sp && typeof sp.target_temp === 'number') ? sp.target_temp : 24;\n// Cloud fan speed drives ventilation: fan 100 % lowers the CO2 equilibrium by 25 %.\nvar fanPct = (sp && typeof sp.fan_speed === 'number') ? Math.min(100, Math.max(0, sp.fan_speed)) : 20;\nif (s.emg) { fanPct = 100; } // local emergency fan overrides for ventilation\nvar vent = 1 - 0.25 * (fanPct / 100);\n\n// --- virtual CO2 (MH-Z19): approaches an occupancy+ventilation equilibrium\nvar eqCo2 = occ ? Math.min(2200, (420 + ppl * EQ_PER_PPL) * vent) : 420;\nvar co2 = s.co2 + (eqCo2 - s.co2) * EQ_RATE * TICK_S + (Math.random() - 0.5) * 3 * TICK_S;\nco2 = Math.min(2200, Math.max(420, co2));\n\n// --- virtual temperature (DHT22): drifts toward the cloud setpoint ----\nvar heat = occ ? ppl * 0.006 : 0;\nvar temp = s.temp - (s.temp - setpoint) * 0.02 * TICK_S + heat * TICK_S + (Math.random() - 0.5) * 0.04 * TICK_S;\ntemp = Math.min(38, Math.max(16, temp));\n\n// --- virtual humidity (DHT22) -----------------------------------------\nvar hum = s.hum + (occ ? 0.05 : -0.03) * TICK_S + (Math.random() - 0.5) * 0.05 * TICK_S;\nhum = Math.min(75, Math.max(25, hum));\n\ns.temp = temp; s.hum = hum; s.co2 = co2; s.ppl = ppl;\ncontext.set('s', s);\n\n// --- 5-second sliding average (FR1: remove electrical noise) ----------\nvar buf = context.get('buf') || [];\nbuf.push({ t: now, temp: temp, hum: hum, co2: co2, occ: occ });\nwhile (buf.length > 1 && now - buf[0].t > 5000) { buf.shift(); }\nif (buf.length > 200) { buf.shift(); }\ncontext.set('buf', buf);\n\n// --- emergency fan path (FR1: raw CO2 >= 1000 -> local fan 100) -------\nvar emgMsg = null;\nvar clrMsg = null;\nvar latencyMs = null;\nif (!s.emg && co2 >= EMG_ON) {\n  s.emg = true;\n  // estimate when CO2 actually crossed 1000 ppm between two 250 ms samples\n  if (prevCo2 !== undefined && prevCo2 < EMG_ON) {\n    var frac = (EMG_ON - prevCo2) / (co2 - prevCo2);\n    latencyMs = Math.round(Math.min(1, Math.max(0, frac)) * TICK_S * 1000);\n  }\n  latencyMs = latencyMs === null ? Math.round(TICK_S * 1000) : latencyMs;\n  node.warn('[edge-emergency] zone=west-office raw CO2=' + Math.round(co2) + ' ppm >= ' + EMG_ON +\n    ' -> LOCAL fan forced to 100% (action latency ~' + latencyMs + ' ms < 500 ms NFR2)');\n  flow.set('emg:west-office', true);\n  emgMsg = { payload: { zone: 'west-office', co2_ppm: Math.round(co2), action: 'emergency_fan_100', latency_ms: latencyMs, time: new Date().toISOString() } };\n} else if (s.emg && co2 < EMG_OFF) {\n  s.emg = false;\n  node.warn('[edge-emergency-clear] zone=west-office CO2=' + Math.round(co2) + ' ppm < ' + EMG_OFF + ' -> local fan released');\n  flow.set('emg:west-office', false);\n  clrMsg = { payload: { zone: 'west-office', co2_ppm: Math.round(co2), action: 'emergency_clear', time: new Date().toISOString() } };\n}\ncontext.set('s', s);\n\n// --- publish smoothed reading every 5 seconds -------------------------\nvar pubMsg = null;\nif (s.tick % PUBLISH_TICKS === 0 && buf.length > 0) {\n  var n = buf.length;\n  var avg = buf.reduce(function (a, m) {\n    a.temp += m.temp / n; a.hum += m.hum / n; a.co2 += m.co2 / n;\n    a.occ = a.occ || m.occ;\n    return a;\n  }, { temp: 0, hum: 0, co2: 0, occ: false });\n  pubMsg = {\n    payload: {\n      zone: 'west-office', time: new Date(now).toISOString(),\n      temp_celsius: Math.round(avg.temp * 100) / 100,\n      humidity: Math.round(avg.hum * 100) / 100,\n      co2_ppm: Math.round(avg.co2),\n      occupancy: avg.occ, edge: 'nodered'\n    }\n  };\n  flow.set('last:west-office', { sec: sec, temp_celsius: pubMsg.payload.temp_celsius, co2_ppm: pubMsg.payload.co2_ppm, occupancy: avg.occ });\n}\nreturn [pubMsg, emgMsg, clrMsg];",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 280,
+    "y": 270,
+    "wires": [
+      [
+        "out-tel-west-office"
+      ],
+      [
+        "out-emg-west-office"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "out-tel-west-office",
+    "type": "mqtt out",
+    "z": "edge-main",
+    "name": "telemetry west-office",
+    "topic": "zones/west-office/telemetry",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-edge",
+    "x": 500,
+    "y": 270,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "out-emg-west-office",
+    "type": "mqtt out",
+    "z": "edge-main",
+    "name": "edge emergency west-office",
+    "topic": "edge/emergency/west-office",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-edge",
+    "x": 500,
+    "y": 390,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "inj-meeting-room",
+    "type": "inject",
+    "z": "edge-main",
+    "name": "virtual sensor clock meeting-room",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "0.25",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 80,
+    "y": 420,
+    "wires": [
+      [
+        "fn-gen-meeting-room"
+      ]
+    ]
+  },
+  {
+    "id": "fn-gen-meeting-room",
+    "type": "function",
+    "z": "edge-main",
+    "name": "meeting-room (DHT22/MH-Z19/PIR virtual)",
+    "func": "// Virtual sensor suite for meeting-room: DHT22 (temp/hum), MH-Z19 (CO2), PIR (occupancy)\nvar TICK_S = 0.25;                    // virtual sensor sampling cadence\nvar PUBLISH_TICKS = 20;               // 20 ticks = 5 s sliding window (FR1 smoothing)\nvar EQ_PER_PPL = 115;     // ppm per occupant at equilibrium (room ventilation)\nvar EQ_RATE = 0.02;                   // ppm exchange rate (1/s)\nvar EMG_ON = 1000, EMG_OFF = 850;     // ppm hysteresis (FR1)\nvar s = context.get('s');\nif (!s) { s = JSON.parse('{\"temp\":23.8,\"hum\":50,\"co2\":460,\"ppl\":0}'); s.tick = 0; s.emg = false; }\nvar prevCo2 = context.get('prevCo2');\ncontext.set('prevCo2', s.co2);\n\ns.tick += 1;\nvar sec = Math.round(s.tick * TICK_S * 10) / 10;\nvar now = Date.now();\n\n// --- virtual occupancy (PIR) -----------------------------------------\nvar ppl = 0;\nvar windows = [[20,12],[150,0],[320,12],[470,0]];\nfor (var i = 0; i < windows.length; i++) {\n  var w = windows[i];\n  if (sec >= w[0] && sec < (windows[i + 1] ? windows[i + 1][0] : 86400)) { ppl = w[1]; break; }\n}\nvar occ = ppl > 0;\n\n// --- virtual temperature/CO2 (DHT22/MH-Z19): room responds to the AC ------\nvar sp = flow.get('setpoint:meeting-room');\nvar setpoint = (sp && typeof sp.target_temp === 'number') ? sp.target_temp : 24;\n// Cloud fan speed drives ventilation: fan 100 % lowers the CO2 equilibrium by 25 %.\nvar fanPct = (sp && typeof sp.fan_speed === 'number') ? Math.min(100, Math.max(0, sp.fan_speed)) : 20;\nif (s.emg) { fanPct = 100; } // local emergency fan overrides for ventilation\nvar vent = 1 - 0.25 * (fanPct / 100);\n\n// --- virtual CO2 (MH-Z19): approaches an occupancy+ventilation equilibrium\nvar eqCo2 = occ ? Math.min(2200, (420 + ppl * EQ_PER_PPL) * vent) : 420;\nvar co2 = s.co2 + (eqCo2 - s.co2) * EQ_RATE * TICK_S + (Math.random() - 0.5) * 3 * TICK_S;\nco2 = Math.min(2200, Math.max(420, co2));\n\n// --- virtual temperature (DHT22): drifts toward the cloud setpoint ----\nvar heat = occ ? ppl * 0.006 : 0;\nvar temp = s.temp - (s.temp - setpoint) * 0.02 * TICK_S + heat * TICK_S + (Math.random() - 0.5) * 0.04 * TICK_S;\ntemp = Math.min(38, Math.max(16, temp));\n\n// --- virtual humidity (DHT22) -----------------------------------------\nvar hum = s.hum + (occ ? 0.05 : -0.03) * TICK_S + (Math.random() - 0.5) * 0.05 * TICK_S;\nhum = Math.min(75, Math.max(25, hum));\n\ns.temp = temp; s.hum = hum; s.co2 = co2; s.ppl = ppl;\ncontext.set('s', s);\n\n// --- 5-second sliding average (FR1: remove electrical noise) ----------\nvar buf = context.get('buf') || [];\nbuf.push({ t: now, temp: temp, hum: hum, co2: co2, occ: occ });\nwhile (buf.length > 1 && now - buf[0].t > 5000) { buf.shift(); }\nif (buf.length > 200) { buf.shift(); }\ncontext.set('buf', buf);\n\n// --- emergency fan path (FR1: raw CO2 >= 1000 -> local fan 100) -------\nvar emgMsg = null;\nvar clrMsg = null;\nvar latencyMs = null;\nif (!s.emg && co2 >= EMG_ON) {\n  s.emg = true;\n  // estimate when CO2 actually crossed 1000 ppm between two 250 ms samples\n  if (prevCo2 !== undefined && prevCo2 < EMG_ON) {\n    var frac = (EMG_ON - prevCo2) / (co2 - prevCo2);\n    latencyMs = Math.round(Math.min(1, Math.max(0, frac)) * TICK_S * 1000);\n  }\n  latencyMs = latencyMs === null ? Math.round(TICK_S * 1000) : latencyMs;\n  node.warn('[edge-emergency] zone=meeting-room raw CO2=' + Math.round(co2) + ' ppm >= ' + EMG_ON +\n    ' -> LOCAL fan forced to 100% (action latency ~' + latencyMs + ' ms < 500 ms NFR2)');\n  flow.set('emg:meeting-room', true);\n  emgMsg = { payload: { zone: 'meeting-room', co2_ppm: Math.round(co2), action: 'emergency_fan_100', latency_ms: latencyMs, time: new Date().toISOString() } };\n} else if (s.emg && co2 < EMG_OFF) {\n  s.emg = false;\n  node.warn('[edge-emergency-clear] zone=meeting-room CO2=' + Math.round(co2) + ' ppm < ' + EMG_OFF + ' -> local fan released');\n  flow.set('emg:meeting-room', false);\n  clrMsg = { payload: { zone: 'meeting-room', co2_ppm: Math.round(co2), action: 'emergency_clear', time: new Date().toISOString() } };\n}\ncontext.set('s', s);\n\n// --- publish smoothed reading every 5 seconds -------------------------\nvar pubMsg = null;\nif (s.tick % PUBLISH_TICKS === 0 && buf.length > 0) {\n  var n = buf.length;\n  var avg = buf.reduce(function (a, m) {\n    a.temp += m.temp / n; a.hum += m.hum / n; a.co2 += m.co2 / n;\n    a.occ = a.occ || m.occ;\n    return a;\n  }, { temp: 0, hum: 0, co2: 0, occ: false });\n  pubMsg = {\n    payload: {\n      zone: 'meeting-room', time: new Date(now).toISOString(),\n      temp_celsius: Math.round(avg.temp * 100) / 100,\n      humidity: Math.round(avg.hum * 100) / 100,\n      co2_ppm: Math.round(avg.co2),\n      occupancy: avg.occ, edge: 'nodered'\n    }\n  };\n  flow.set('last:meeting-room', { sec: sec, temp_celsius: pubMsg.payload.temp_celsius, co2_ppm: pubMsg.payload.co2_ppm, occupancy: avg.occ });\n}\nreturn [pubMsg, emgMsg, clrMsg];",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 280,
+    "y": 420,
+    "wires": [
+      [
+        "out-tel-meeting-room"
+      ],
+      [
+        "out-emg-meeting-room"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "out-tel-meeting-room",
+    "type": "mqtt out",
+    "z": "edge-main",
+    "name": "telemetry meeting-room",
+    "topic": "zones/meeting-room/telemetry",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-edge",
+    "x": 500,
+    "y": 420,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "out-emg-meeting-room",
+    "type": "mqtt out",
+    "z": "edge-main",
+    "name": "edge emergency meeting-room",
+    "topic": "edge/emergency/meeting-room",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-edge",
+    "x": 500,
+    "y": 540,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "mqtt-broker-edge",
+    "type": "mqtt-broker",
+    "name": "emulated AWS IoT Core broker",
+    "broker": "broker",
+    "port": "1883",
+    "clientid": "nodered-edge",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthRetain": "false",
+    "birthMsg": null,
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeRetain": "false",
+    "closeMsg": null,
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willRetain": "false",
+    "willMsg": null,
+    "sessionExpiry": ""
+  },
+  {
+    "id": "in-setpoint",
+    "type": "mqtt in",
+    "z": "edge-main",
+    "name": "cloud setpoint commands",
+    "topic": "zones/+/setpoint",
+    "qos": "2",
+    "datatype": "auto-detect",
+    "broker": "mqtt-broker-edge",
+    "nl": false,
+    "rap": true,
+    "rh": false,
+    "inputs": 0,
+    "x": 80,
+    "y": 700,
+    "wires": [
+      [
+        "fn-setpoint-handler"
+      ]
+    ]
+  },
+  {
+    "id": "fn-setpoint-handler",
+    "type": "function",
+    "z": "edge-main",
+    "name": "apply setpoint to virtual actuator",
+    "func": "// FR4: control settings come back through the broker to the edge actuators\nvar zone = String(msg.topic || '').split('/')[1];\nif (!zone) { return null; }\nvar p = msg.payload;\nflow.set('setpoint:' + zone, {\n  target_temp: p.target_temp, fan_speed: p.fan_speed,\n  decision_id: p.decision_id, time: p.time, reasoning: p.reasoning\n});\nvar emg = flow.get('emg:' + zone);\nvar fan = emg && p.target_fan_speed < 100 ? '100 (edge override)' : p.target_fan_speed;\nnode.warn('[edge-actuator] zone=' + zone + ' applied temp=' + p.target_temp + 'C fan=' + fan + '%' +\n  (p.decision_id ? ' decision=' + p.decision_id : '') + (emg ? ' [emergency active]' : ''));\nreturn null;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 300,
+    "y": 700,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "inj-status",
+    "type": "inject",
+    "z": "edge-main",
+    "name": "edge status every 60 s",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "60",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 10,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 80,
+    "y": 780,
+    "wires": [
+      [
+        "fn-status"
+      ]
+    ]
+  },
+  {
+    "id": "fn-status",
+    "type": "function",
+    "z": "edge-main",
+    "name": "edge status reporter",
+    "func": "var zones = ['east-office', 'west-office', 'meeting-room'];\nvar parts = [];\nfor (var i = 0; i < zones.length; i++) {\n  var z = zones[i];\n  var sp = flow.get('setpoint:' + z);\n  var last = flow.get('last:' + z);\n  var emg = flow.get('emg:' + z) === true;\n  parts.push(z + ' lastCo2=' + (last ? last.co2_ppm : '-') + ' temp=' + (last ? last.temp_celsius : '-') +\n    (sp ? ' set=' + sp.target_temp : ' set=none') + (emg ? ' EMERGENCY' : ''));\n}\nnode.warn('[edge-status] ' + parts.join(' | '));\nreturn null;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 300,
+    "y": 780,
+    "wires": [
+      []
+    ]
+  }
+]

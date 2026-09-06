@@ -1,0 +1,24 @@
+# Node
+node_modules/
+
+# Runtime data (file-backed store when MongoDB is not configured)
+data/
+.data/
+
+# Evidence artefacts are a deliverable of this project - they are captured by
+# scripts/verify_stack.js + docker compose logs and kept for submission.
+
+# Node-RED working files (editor state written back into edge/data)
+edge/data/flows_*.json
+edge/data/flows_cred.json
+edge/data/.config*
+edge/data/lib/
+edge/data/node_modules/
+edge/data/settings.js.orig
+
+# Env
+.env
+
+# Misc
+*.log
+.DS_Store

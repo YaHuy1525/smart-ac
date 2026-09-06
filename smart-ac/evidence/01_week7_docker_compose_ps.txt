@@ -1,0 +1,13 @@
+=== compose ps ===
+captured: 2026-09-06T08:48:08.512Z
+
+NAME                   IMAGE                COMMAND                  SERVICE     CREATED          STATUS                    PORTS
+smart-ac-actuator-1    smart-ac-actuator    "docker-entrypoint.s…"   actuator    11 minutes ago   Up 11 minutes (healthy)   127.0.0.1:3140->3140/tcp
+smart-ac-ai-agent-1    smart-ac-ai-agent    "docker-entrypoint.s…"   ai-agent    11 minutes ago   Up 11 minutes (healthy)   127.0.0.1:3130->3130/tcp
+smart-ac-broker        smart-ac-broker      "docker-entrypoint.s…"   broker      11 minutes ago   Up 11 minutes (healthy)   0.0.0.0:1883->1883/tcp, [::]:1883->1883/tcp, 127.0.0.1:31883->31883/tcp
+smart-ac-ingestion-1   smart-ac-ingestion   "docker-entrypoint.s…"   ingestion   11 minutes ago   Up 11 minutes (healthy)   127.0.0.1:3120->3120/tcp
+smart-ac-mongo         mongo:7              "docker-entrypoint.s…"   mongo       11 minutes ago   Up 11 minutes (healthy)   127.0.0.1:27018->27017/tcp
+smart-ac-nodered       smart-ac-nodered     "./entrypoint.sh"        nodered     11 minutes ago   Up 10 minutes (healthy)   0.0.0.0:1880->1880/tcp, [::]:1880->1880/tcp
+smart-ac-queue         smart-ac-queue       "docker-entrypoint.s…"   queue       11 minutes ago   Up 11 minutes (healthy)   127.0.0.1:3100->3100/tcp
+
+(exit 0)

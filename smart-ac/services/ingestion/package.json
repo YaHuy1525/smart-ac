@@ -1,0 +1,13 @@
+{
+  "name": "smart-ac-ingestion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ingestion microservice: pulls telemetry from SQS-emulator queue, validates, stores (Week 4)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.12.0"
+  }
+}

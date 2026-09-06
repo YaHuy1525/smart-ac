@@ -1,0 +1,14 @@
+{
+  "name": "smart-ac-actuator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Actuator microservice: applies AI setpoint decisions back to the edge via MQTT (Week 6)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.12.0",
+    "mqtt": "^5.10.3"
+  }
+}

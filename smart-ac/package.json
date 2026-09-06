@@ -1,0 +1,15 @@
+{
+  "name": "smart-ac-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart AI Driven Air Conditioning and Environmental Control System - SIT314 Distinction Project (Weeks 1-7)",
+  "scripts": {
+    "train": "node services/ai-agent/train/train_model.js",
+    "stack:native": "node scripts/dev_stack.js",
+    "verify": "node scripts/verify_stack.js",
+    "test": "jest --runInBand"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "smart-ac-ai-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI agent microservice: consumes ai-jobs queue, reads history, decides setpoints (Week 5)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.12.0"
+  }
+}
