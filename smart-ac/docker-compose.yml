@@ -169,7 +169,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 20s
+  dashboard:
+    build:
+      context: .
+      dockerfile: services/dashboard/Dockerfile
+    container_name: smart-ac-dashboard
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: smart_ac
+      AI_AGENT_URL: http://ai-agent:3130
+      QUEUE_URL: http://queue:3100
+    ports:
+      - "3000:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      ai-agent:
+        condition: service_healthy
 
 volumes:
   mongo-data:
+

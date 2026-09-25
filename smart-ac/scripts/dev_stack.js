@@ -25,7 +25,8 @@ const SERVICES = [
   { name: 'broker', dir: 'services/broker', port: 31883, extra: { MQTT_PORT: '1883', METRICS_PORT: '31883' } },
   { name: 'ingestion', dir: 'services/ingestion', port: 3120 },
   { name: 'ai-agent', dir: 'services/ai-agent', port: 3130 },
-  { name: 'actuator', dir: 'services/actuator', port: 3140 }
+  { name: 'actuator', dir: 'services/actuator', port: 3140 },
+  { name: 'dashboard', dir: 'services/dashboard', port: 3000 }
 ];
 
 const children = [];
@@ -46,6 +47,7 @@ for (const svc of SERVICES) {
     PORT: String(svc.port),
     QUEUE_URL: 'http://127.0.0.1:3100',
     MQTT_URL: 'mqtt://127.0.0.1:1883',
+    AI_AGENT_URL: 'http://127.0.0.1:3130',
     DATA_DIR: path.join(ROOT, '.data', svc.name),
     ...(svc.extra || {})
   };

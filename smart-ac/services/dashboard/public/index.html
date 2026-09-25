@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart AC — Environmental Control & Real-Time AI Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Plotly.js CDN for real-time trend analytics -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Bar & System Status Badges -->
+  <header class="navbar">
+  </header>
+
+  <main class="dashboard-container">
+
+    <!-- Top Widgets Grid: Weather Feed & CEP Alerts -->
+    <section class="top-widgets-grid">
+      <!-- External Weather Feed Card -->
+      <div class="card weather-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">External Weather Feed</div>
+            <div class="card-tag-sub">Live Environmental Baseline</div>
+          </div>
+          <span class="card-tag">Melbourne Source</span>
+        </div>
+        <div class="weather-body">
+          <div class="weather-temp" id="weatherTemp">19.5 °C</div>
+          <div class="weather-meta">
+            <div class="meta-item">Location: <span id="weatherLoc">Melbourne (Outdoor)</span></div>
+            <div class="meta-item">Condition: <span id="weatherCond">Partly Cloudy</span></div>
+            <div class="meta-item">Humidity: <span id="weatherHum">58%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Complex Event Processing (CEP) Alerts Engine -->
+      <div class="card cep-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Complex Event Processing (CEP) Alerts</div>
+            <div class="card-tag-sub">Automated Pattern & Hazard Detection</div>
+          </div>
+          <div class="alert-count-badge" id="cepCountBadge">0 Active Alerts</div>
+        </div>
+        <div class="cep-feed" id="cepAlertsFeed">
+          <div class="empty-feed">System nominal. Monitoring real-time threshold breaches & sensor anomalies...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3-Zone Live Telemetry Cards & AI Setpoint Controls -->
+    <section class="section-container">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Zone Telemetry & AI Control Status</h2>
+          <p class="section-subtitle">Real-time sensor data streamed from Node-RED Edge Gateway & microservice store</p>
+        </div>
+        <div class="live-pulse">
+          Live Stream Active
+        </div>
+      </div>
+
+      <div class="zones-grid" id="zonesGrid">
+        <!-- Burwood Card -->
+        <div class="card zone-card" id="card-burwood">
+          <div class="zone-header">
+            <div>
+              <div class="zone-name">Burwood</div>
+              <div class="zone-sub">Zone Profile #1</div>
+            </div>
+            <div class="occupancy-pill" id="occ-burwood">Occupied</div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-label">Temperature</div>
+              <div class="metric-value" id="temp-burwood">23.5 °C</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">CO2 Level</div>
+              <div class="metric-value" id="co2-burwood">520 ppm</div>
+              <div class="status-bar-bg"><div class="status-bar-fill fill-good" id="bar-co2-burwood" style="width: 43%;"></div></div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Humidity</div>
+              <div class="metric-value" id="hum-burwood">48%</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Local Edge Fan</div>
+              <div class="fan-pill pill-normal" id="fan-burwood">NORMAL</div>
+            </div>
+          </div>
+          <div class="actuator-footer">
+            <span class="actuator-label">AI Cloud Setpoint Target:</span>
+            <span class="actuator-value" id="ai-setpoint-burwood">23.0 °C / Fan 24%</span>
+          </div>
+        </div>
+
+        <!-- Dubai Card -->
+        <div class="card zone-card" id="card-dubai">
+          <div class="zone-header">
+            <div>
+              <div class="zone-name">Dubai, UAE</div>
+              <div class="zone-sub">Zone Profile #2 (Real-World Test)</div>
+            </div>
+            <div class="occupancy-pill pill-unoccupied" id="occ-dubai">Unoccupied</div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-label">Temperature</div>
+              <div class="metric-value" id="temp-dubai">35.8 °C</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">CO2 Level</div>
+              <div class="metric-value" id="co2-dubai">430 ppm</div>
+              <div class="status-bar-bg"><div class="status-bar-fill fill-good" id="bar-co2-dubai" style="width: 35%;"></div></div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Humidity</div>
+              <div class="metric-value" id="hum-dubai">42%</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Local Edge Fan</div>
+              <div class="fan-pill pill-normal" id="fan-dubai">NORMAL</div>
+            </div>
+          </div>
+          <div class="actuator-footer">
+            <span class="actuator-label">AI Cloud Setpoint Target:</span>
+            <span class="actuator-value" id="ai-setpoint-dubai">26.0 °C / Fan 18% (Energy Saving)</span>
+          </div>
+        </div>
+
+        <!-- Melbourne CBD Card -->
+        <div class="card zone-card" id="card-melbourne-cbd">
+          <div class="zone-header">
+            <div>
+              <div class="zone-name">Melbourne CBD</div>
+              <div class="zone-sub">Zone Profile #3</div>
+            </div>
+            <div class="occupancy-pill" id="occ-melbourne-cbd">Occupied</div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-label">Temperature</div>
+              <div class="metric-value" id="temp-melbourne-cbd">24.1 °C</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">CO2 Level</div>
+              <div class="metric-value" id="co2-melbourne-cbd">610 ppm</div>
+              <div class="status-bar-bg"><div class="status-bar-fill fill-good" id="bar-co2-melbourne-cbd" style="width: 50%;"></div></div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Humidity</div>
+              <div class="metric-value" id="hum-melbourne-cbd">55%</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Local Edge Fan</div>
+              <div class="fan-pill pill-normal" id="fan-melbourne-cbd">NORMAL</div>
+            </div>
+          </div>
+          <div class="actuator-footer">
+            <span class="actuator-label">AI Cloud Setpoint Target:</span>
+            <span class="actuator-value" id="ai-setpoint-melbourne-cbd">22.0 °C / Fan 100%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Analytics Trend Charts & AI Reasoning Feed Grid -->
+    <section class="bottom-grid">
+      <!-- Plotly Live Trend Analytics -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Real-Time Environmental Trend Analytics</div>
+            <div class="card-tag-sub">Live CO2 Concentration Stream per Zone</div>
+          </div>
+          <div>
+            <button id="toggleGraphBtn" class="btn" style="padding: 6px 12px; font-size: 0.75rem; border: 1px solid var(--primary); color: var(--primary); cursor: pointer; background: transparent; border-radius: 4px;" onclick="toggleGraph()">⏸ Pause Graph</button>
+          </div>
+        </div>
+        <div id="plotlyChartContainer" class="chart-box"></div>
+      </div>
+
+      <!-- AI Neural Decision & Reasoning Feed -->
+      <div class="card ai-reasoning-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">AI Decision Engine Reasoning Feed</div>
+            <div class="card-tag-sub">Model: ai-agent-nn-v1 (Neural Network Policy)</div>
+          </div>
+          <span class="card-tag tag-ai">Neural Policy</span>
+        </div>
+        <div class="reasoning-feed" id="aiReasoningFeed">
+          <div class="feed-item">
+            <div class="feed-time">System Startup</div>
+            <div class="feed-text">Trained Neural Network Model loaded (ai-agent-nn-v1). Monitoring closed-loop feedback...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
